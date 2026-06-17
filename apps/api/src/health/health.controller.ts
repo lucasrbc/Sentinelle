@@ -1,10 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
+import { Public } from '../auth/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
  * Health-check de bout en bout : prouve que l'API joint PostgreSQL ET que
  * l'extension PostGIS est disponible (objectif de la PR n°1).
  */
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
