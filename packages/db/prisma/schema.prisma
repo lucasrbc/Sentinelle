@@ -1,0 +1,222 @@
+// Sentinelle — modèle de données (MVP).
+// Conventions imposées (SPEC §5, §11) :
+//   - Montants en CENTIMES (Int) partout — jamais de flottant sur l'argent.
+//   - Project.collectedAmount est DÉNORMALISÉ (jauge) ; source de vérité =
+//     somme des dons SUCCEEDED, recalculée sur webhook Stripe (PR n°5).
+//   - Un Project n'est public qu'au statut PUBLISHED (modération).
+//   - HeritageSite.location = geometry(Point, 4326) gérée en SQL BRUT
+//     (Prisma Client ne sait pas manipuler la colonne geometry) — cf.
+//     apps/api/src/sites/sites.service.ts. L'extension PostGIS et l'index
+//     spatial GIST sont créés par la migration 000_init_postgis.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_DATABASE_URL")
+  extensions = [postgis]
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  DONOR
+  PROJECT_OWNER
+  ADMIN
+}
+
+enum OrganizationType {
+  COMMUNE
+  ASSOCIATION
+}
+
+enum HeritageType {
+  CHURCH // église
+  CHAPEL // chapelle
+  CALVARY // calvaire
+  PARISH_CLOSE // enclos paroissial
+  OSSUARY // ossuaire
+  ABBEY // abbaye
+  MANOR // manoir
+  WASHHOUSE // lavoir
+  OTHER
+}
+
+enum ProtectionStatus {
+  NONE
+  INSCRIT // inscrit au titre des Monuments Historiques
+  CLASSE // classé Monument Historique
+}
+
+enum ConservationState {
+  GOOD
+  FAIR
+  POOR
+  CRITICAL
+}
+
+enum UrgencyLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ProjectStatus {
+  DRAFT // brouillon porteur
+  PENDING_REVIEW // soumis à modération admin
+  PUBLISHED // public (seul statut visible côté donateur)
+  ARCHIVED
+}
+
+enum DonationType {
+  ONE_TIME // don ponctuel
+  MONTHLY // don mensuel (récurrent)
+}
+
+enum DonationStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+// ─── Entités ─────────────────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  role           UserRole  @default(DONOR)
+  // Identifiant externe du fournisseur d'auth managé (Clerk / Supabase) — PR n°2.
+  authProviderId String?   @unique
+  // Un porteur de projet est rattaché à une organisation.
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  donations      Donation[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([organizationId])
+}
+
+model Organization {
+  id           String           @id @default(cuid())
+  name         String
+  type         OrganizationType
+  siret        String?          @unique
+  contactEmail String?
+  description  String?
+  // Vérification de l'identité du porteur (confiance — SPEC §6).
+  verified     Boolean          @default(false)
+  members      User[]
+  projects     Project[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model HeritageSite {
+  id                String             @id @default(cuid())
+  slug              String             @unique
+  name              String
+  type              HeritageType
+  description       String? // histoire courte
+  commune           String?
+  // Département recalculé par jointure spatiale (ST_Within) après import OSM (SPEC §11).
+  department        String?
+  protectionStatus  ProtectionStatus   @default(NONE)
+  conservationState ConservationState?
+  photos            String[] // URLs object storage
+  // Identifiant OpenStreetMap (déduplication à l'import / upsert).
+  osmId             String?            @unique
+  // Géométrie PostGIS — lue/écrite EXCLUSIVEMENT en SQL brut.
+  location          Unsupported("geometry(Point, 4326)")?
+  projects          Project[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  // Index spatial GIST (cf. migration 000_init_postgis).
+  @@index([location], type: Gist)
+}
+
+model Project {
+  id              String          @id @default(cuid())
+  slug            String          @unique
+  title           String
+  summary         String?
+  description     String?
+  status          ProjectStatus   @default(DRAFT)
+  urgencyLevel    UrgencyLevel?
+  // Montants en centimes.
+  targetAmount    Int
+  collectedAmount Int             @default(0) // dénormalisé — jauge d'avancement
+  // Devis téléchargeable (object storage) — PR n°4.
+  quoteUrl        String?
+  heritageSiteId  String
+  heritageSite    HeritageSite    @relation(fields: [heritageSiteId], references: [id], onDelete: Restrict)
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  updates         ProjectUpdate[]
+  donations       Donation[]
+  publishedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([status])
+  @@index([heritageSiteId])
+  @@index([organizationId])
+}
+
+model ProjectUpdate {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  imageUrls String[]
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model Donation {
+  id                    String         @id @default(cuid())
+  // Montant en centimes.
+  amount                Int
+  currency              String         @default("eur")
+  type                  DonationType
+  status                DonationStatus @default(PENDING)
+  // Références Stripe (PR n°5).
+  stripePaymentIntentId String?        @unique
+  stripeSubscriptionId  String?
+  // Un don est toujours rattaché à un projet (SPEC : pas de don sans projet/porteur).
+  projectId             String
+  project               Project        @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  // Donateur (peut être un compte ou un don invité identifié par email).
+  donorId               String?
+  donor                 User?          @relation(fields: [donorId], references: [id], onDelete: SetNull)
+  donorEmail            String?
+  receipt               FiscalReceipt?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([projectId, status])
+  @@index([donorId])
+}
+
+model FiscalReceipt {
+  id            String   @id @default(cuid())
+  donationId    String   @unique
+  donation      Donation @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  // Numéro de reçu séquentiel/unique (mentions paramétrables — SPEC §8).
+  receiptNumber String   @unique
+  // PDF généré automatiquement (object storage) — PR n°5.
+  pdfUrl        String?
+  amount        Int // centimes
+  issuedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+}
