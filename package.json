@@ -1,0 +1,28 @@
+{
+  "name": "sentinelle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sentinelle — plateforme de découverte et de financement du patrimoine (MVP, région pilote : Bretagne).",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "db:generate": "pnpm --filter @sentinelle/db generate",
+    "db:migrate": "pnpm --filter @sentinelle/db migrate",
+    "db:deploy": "pnpm --filter @sentinelle/db deploy",
+    "db:seed": "pnpm --filter @sentinelle/db seed",
+    "db:studio": "pnpm --filter @sentinelle/db studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3"
+  }
+}
