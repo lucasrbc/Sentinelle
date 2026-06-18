@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { createClient } from '@/lib/supabase/server';
+import { DeleteAccountButton } from './delete-account-button';
 import { SignOutButton } from './sign-out-button';
 
 // Page personnelle : dépend de la session → rendu dynamique.
@@ -75,6 +76,13 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
       <div style={{ marginTop: '2rem' }}>
         <SignOutButton />
       </div>
+
+      <hr style={{ margin: '2rem 0' }} />
+      <h2>Données personnelles</h2>
+      <p className="muted">
+        Conformément au RGPD, vous pouvez supprimer définitivement votre compte.
+      </p>
+      <DeleteAccountButton />
     </main>
   );
 }

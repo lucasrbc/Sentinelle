@@ -164,6 +164,15 @@ export class SitesService {
     `;
   }
 
+  /** Slugs des lieux (pour le sitemap SEO). */
+  async listSlugs(): Promise<{ slug: string; updatedAt: Date }[]> {
+    return this.prisma.heritageSite.findMany({
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 5000,
+    });
+  }
+
   /**
    * Détail d'un lieu par son slug, avec son projet PUBLISHED le plus récent
    * (le cas échéant) pour alimenter la jauge d'avancement. Les coordonnées

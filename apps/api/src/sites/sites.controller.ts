@@ -41,6 +41,12 @@ export class SitesController {
     return this.sites.searchByText(query);
   }
 
+  // GET /sites/sitemap — slugs des lieux pour le sitemap (SEO).
+  @Get('sitemap')
+  sitemap(): Promise<{ slug: string; updatedAt: Date }[]> {
+    return this.sites.listSlugs();
+  }
+
   // GET /sites/:slug — détail d'une fiche (déclaré APRÈS les routes littérales).
   @Get(':slug')
   async getBySlug(@Param('slug') slug: string): Promise<SiteDetail> {

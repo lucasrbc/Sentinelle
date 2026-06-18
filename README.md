@@ -233,5 +233,6 @@ Don **ponctuel** et **mensuel** via une **couche PSP abstraite** (`PAYMENT_PROVI
 2. ✅ **Auth + comptes + rôles** (DONOR / PROJECT_OWNER / ADMIN)
 3. ✅ **Carte + fiches indexables** (MapLibre, SEO)
 4. ✅ **Espace porteur** : projets + actualités + devis + modération
-5. **Dons Stripe** : ponctuel + mensuel, webhook, reçus PDF, transparence ← _PR en cours_
+5. ✅ **Dons Stripe** : ponctuel + mensuel, webhook, reçus PDF, transparence
+6. **Durcissement** : RGPD, sécurité, accessibilité, SEO, tests E2E ← _PR en cours_
 6. Durcissement : RGPD, sécurité, accessibilité, SEO, tests E2E
