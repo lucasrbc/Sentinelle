@@ -53,4 +53,15 @@ export class UsersService {
     });
     return toUserView(user);
   }
+
+  /**
+   * Droit à l'effacement (RGPD) : supprime le compte Sentinelle de
+   * l'utilisateur. Ses dons sont conservés mais anonymisés (donorId mis à
+   * NULL par la clé étrangère). La suppression du compte chez le fournisseur
+   * d'auth (Supabase) est à effectuer séparément.
+   */
+  async deleteSelf(userId: string): Promise<{ deleted: boolean }> {
+    await this.prisma.user.delete({ where: { id: userId } });
+    return { deleted: true };
+  }
 }

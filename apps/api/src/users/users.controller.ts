@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -29,6 +30,12 @@ export class UsersController {
     @Body() dto: UpdateMeDto,
   ): Promise<UserView> {
     return this.users.updateName(user.id, dto.name);
+  }
+
+  /** Droit à l'effacement (RGPD) : suppression de son propre compte. */
+  @Delete('me')
+  deleteMe(@CurrentUser() user: User): Promise<{ deleted: boolean }> {
+    return this.users.deleteSelf(user.id);
   }
 
   /** Liste des comptes (administration). */

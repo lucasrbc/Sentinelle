@@ -65,3 +65,6 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: E2E (parcours de don, mode dev)
+        run: pnpm --filter @sentinelle/api test:e2e
