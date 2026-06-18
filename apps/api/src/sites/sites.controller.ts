@@ -1,7 +1,21 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator';
-import { SearchAroundDto, SearchInBboxDto } from './dto/search-sites.dto';
-import { SitesService, SiteSearchResult } from './sites.service';
+import {
+  SearchAroundDto,
+  SearchInBboxDto,
+  SearchTextDto,
+} from './dto/search-sites.dto';
+import {
+  SitesService,
+  type SiteDetail,
+  type SiteSearchResult,
+} from './sites.service';
 
 // La carte et la recherche de lieux sont publiques (découverte sans compte).
 @Public()
@@ -19,5 +33,21 @@ export class SitesController {
   @Get('bbox')
   searchInBbox(@Query() query: SearchInBboxDto): Promise<SiteSearchResult[]> {
     return this.sites.searchInBbox(query);
+  }
+
+  // GET /sites/search?q=brest&type=CHURCH
+  @Get('search')
+  searchByText(@Query() query: SearchTextDto): Promise<SiteSearchResult[]> {
+    return this.sites.searchByText(query);
+  }
+
+  // GET /sites/:slug — détail d'une fiche (déclaré APRÈS les routes littérales).
+  @Get(':slug')
+  async getBySlug(@Param('slug') slug: string): Promise<SiteDetail> {
+    const site = await this.sites.getBySlug(slug);
+    if (!site) {
+      throw new NotFoundException('Lieu introuvable');
+    }
+    return site;
   }
 }

@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import {
+  ConservationState,
   HeritageType,
   Prisma,
+  ProjectStatus,
   ProtectionStatus,
+  UrgencyLevel,
 } from '@sentinelle/db';
 import { PrismaService } from '../prisma/prisma.service';
 import type {
   SearchAroundDto,
   SearchInBboxDto,
+  SearchTextDto,
   SiteFiltersDto,
 } from './dto/search-sites.dto';
 
@@ -28,6 +32,35 @@ export interface SiteSearchResult {
   longitude: number;
   /** Distance en mètres au point de recherche (uniquement pour searchAround). */
   distance?: number;
+}
+
+/** Projet publié rattaché à un lieu (avec les éléments de la jauge). */
+export interface SiteProjectView {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  urgencyLevel: UrgencyLevel | null;
+  targetAmount: number; // centimes
+  collectedAmount: number; // centimes (dénormalisé)
+  quoteUrl: string | null;
+}
+
+/** Détail complet d'un lieu pour sa fiche. */
+export interface SiteDetail {
+  id: string;
+  slug: string;
+  name: string;
+  type: HeritageType;
+  description: string | null;
+  commune: string | null;
+  department: string | null;
+  protectionStatus: ProtectionStatus;
+  conservationState: ConservationState | null;
+  photos: string[];
+  latitude: number | null;
+  longitude: number | null;
+  project: SiteProjectView | null;
 }
 
 export interface UpsertSiteWithPointInput {
@@ -104,6 +137,92 @@ export class SitesService {
   }
 
   /**
+   * Recherche texte par nom de lieu ou commune (barre de recherche),
+   * filtres optionnels appliqués. Renvoie aussi les coordonnées.
+   */
+  async searchByText(params: SearchTextDto): Promise<SiteSearchResult[]> {
+    const { q, limit, ...filters } = params;
+    const pattern = `%${q}%`;
+
+    return this.prisma.$queryRaw<SiteSearchResult[]>`
+      SELECT
+        s."id",
+        s."slug",
+        s."name",
+        s."type",
+        s."commune",
+        s."department",
+        s."protectionStatus",
+        ST_Y(s."location"::geometry) AS "latitude",
+        ST_X(s."location"::geometry) AS "longitude"
+      FROM "HeritageSite" s
+      WHERE s."location" IS NOT NULL
+        AND (s."name" ILIKE ${pattern} OR s."commune" ILIKE ${pattern})
+        ${this.buildFilters(filters)}
+      ORDER BY s."name" ASC
+      LIMIT ${limit ?? 50};
+    `;
+  }
+
+  /**
+   * Détail d'un lieu par son slug, avec son projet PUBLISHED le plus récent
+   * (le cas échéant) pour alimenter la jauge d'avancement. Les coordonnées
+   * sont extraites de la géométrie PostGIS. Renvoie null si introuvable.
+   */
+  async getBySlug(slug: string): Promise<SiteDetail | null> {
+    const site = await this.prisma.heritageSite.findUnique({
+      where: { slug },
+      include: {
+        projects: {
+          where: { status: ProjectStatus.PUBLISHED },
+          orderBy: { publishedAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    if (!site) return null;
+
+    const coords = await this.prisma.$queryRaw<
+      { latitude: number | null; longitude: number | null }[]
+    >`
+      SELECT
+        ST_Y("location"::geometry) AS "latitude",
+        ST_X("location"::geometry) AS "longitude"
+      FROM "HeritageSite"
+      WHERE "id" = ${site.id};
+    `;
+
+    const project = site.projects[0] ?? null;
+
+    return {
+      id: site.id,
+      slug: site.slug,
+      name: site.name,
+      type: site.type,
+      description: site.description,
+      commune: site.commune,
+      department: site.department,
+      protectionStatus: site.protectionStatus,
+      conservationState: site.conservationState,
+      photos: site.photos,
+      latitude: coords[0]?.latitude ?? null,
+      longitude: coords[0]?.longitude ?? null,
+      project: project
+        ? {
+            id: project.id,
+            slug: project.slug,
+            title: project.title,
+            summary: project.summary,
+            urgencyLevel: project.urgencyLevel,
+            targetAmount: project.targetAmount,
+            collectedAmount: project.collectedAmount,
+            quoteUrl: project.quoteUrl,
+          }
+        : null,
+    };
+  }
+
+  /**
    * Upsert d'un site avec écriture de la géométrie en SQL brut.
    * Étape 1 : champs scalaires via Prisma Client (gestion de l'id cuid).
    * Étape 2 : colonne `location` via ST_SetSRID/ST_MakePoint (non gérée par Prisma).
@@ -165,6 +284,18 @@ export class SitesService {
     if (filters.protectionStatus && filters.protectionStatus.length > 0) {
       conditions.push(
         Prisma.sql`s."protectionStatus" = ANY(${filters.protectionStatus}::"ProtectionStatus"[])`,
+      );
+    }
+
+    if (filters.urgency && filters.urgency.length > 0) {
+      // Site portant un projet PUBLISHED au niveau d'urgence demandé.
+      conditions.push(
+        Prisma.sql`EXISTS (
+          SELECT 1 FROM "Project" p
+          WHERE p."heritageSiteId" = s."id"
+            AND p."status" = 'PUBLISHED'
+            AND p."urgencyLevel" = ANY(${filters.urgency}::"UrgencyLevel"[])
+        )`,
       );
     }
 
