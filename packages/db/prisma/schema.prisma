@@ -12,6 +12,9 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  // Client généré DANS le package (auto-contenu) : indispensable pour que le
+  // packaging de production (pnpm deploy / Docker) embarque le client.
+  output          = "../client"
 }
 
 datasource db {

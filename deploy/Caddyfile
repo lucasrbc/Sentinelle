@@ -1,0 +1,13 @@
+# Reverse proxy + HTTPS automatique. Renseigner DOMAIN (ex. sentinelle.fr).
+# - app.DOMAIN  → site web (Next.js)
+# - api.DOMAIN  → API (NestJS)
+
+app.{$DOMAIN} {
+	encode gzip
+	reverse_proxy web:3000
+}
+
+api.{$DOMAIN} {
+	encode gzip
+	reverse_proxy api:4000
+}

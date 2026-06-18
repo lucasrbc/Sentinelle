@@ -15,7 +15,7 @@
  * La colonne `location` (geometry) est écrite en SQL BRUT (Prisma Client ne
  * sait pas manipuler la géométrie PostGIS).
  */
-import { PrismaClient, HeritageType, ProtectionStatus } from '@prisma/client';
+import { PrismaClient, HeritageType, ProtectionStatus } from '../client';
 
 const prisma = new PrismaClient();
 

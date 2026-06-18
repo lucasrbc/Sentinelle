@@ -34,3 +34,6 @@ pnpm-debug.log*
 
 # Coverage / tests
 coverage/
+
+# Client Prisma généré (auto-contenu dans le package db)
+packages/db/client/
