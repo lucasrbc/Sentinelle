@@ -124,10 +124,47 @@ Conventions imposées :
   tags OSM sont peu fiables).
 - **Enclos paroissiaux** : pas de tag OSM unique → regroupement manuel.
 
+## Authentification & rôles (PR n°2)
+
+Les identifiants (mots de passe, vérification d'email, réinitialisation) sont
+gérés par **Supabase Auth** (hébergé en région UE — RGPD). Sentinelle ne stocke
+**aucun mot de passe** : elle conserve seulement une fiche `User` (rôle inclus).
+
+- **Rôles** : `DONOR` (par défaut), `PROJECT_OWNER`, `ADMIN`.
+- **Création de compte à la volée** : à la première requête authentifiée, l'API
+  crée le `User` correspondant (lié à l'identifiant Supabase).
+- **Amorçage admin** : tout email listé dans `ADMIN_EMAILS` est promu `ADMIN`.
+- **Devenir porteur** : un utilisateur crée son `Organization` (commune/asso) et
+  passe `PROJECT_OWNER` ; l'organisation reste **non vérifiée** jusqu'à
+  validation par un admin (confiance).
+- **Contrôle d'accès** côté serveur : gardes globales `JwtAuthGuard` +
+  `RolesGuard`, décorateurs `@Public()`, `@Roles(...)`, `@CurrentUser()`.
+- **Abstraction fournisseur** (`AuthProvider`) : `supabase` en production,
+  `dev` pour les tests locaux/CI (jetons HS256 signés avec `DEV_AUTH_SECRET`,
+  sans dépendre d'un compte Supabase réel).
+
+Endpoints principaux : `GET/PATCH /me`, `GET /users` & `PATCH /users/:id/role`
+(admin), `POST /organizations`, `GET /organizations` & `PATCH
+/organizations/:id/verify` (admin). Pages web : `/login`, `/signup`,
+`/account`, `/account/organization`.
+
+### Tester l'auth en local sans Supabase (mode `dev`)
+
+```bash
+# API en mode dev-auth
+AUTH_PROVIDER=dev DEV_AUTH_SECRET=ma-cle ADMIN_EMAILS=patron@sentinelle.fr \
+  pnpm --filter @sentinelle/api dev
+
+# Forger un jeton de test (donateur)
+node -e "console.log(require('jsonwebtoken').sign({sub:'u1',email:'d@test.fr',aud:'authenticated'},'ma-cle',{algorithm:'HS256',expiresIn:'1h'}))"
+
+curl -H "Authorization: Bearer <jeton>" http://localhost:4000/me
+```
+
 ## Plan de PR
 
-1. **Archi & fondations** ← _PR en cours_
-2. Auth + comptes + rôles (DONOR / PROJECT_OWNER / ADMIN)
+1. ✅ **Archi & fondations** (monorepo, Prisma + PostGIS, docker-compose)
+2. **Auth + comptes + rôles** (DONOR / PROJECT_OWNER / ADMIN) ← _PR en cours_
 3. Carte + fiches indexables (`searchAround` / `searchInBbox`, MapLibre, SEO)
 4. Espace porteur : projets + actualités + devis + modération
 5. Dons Stripe : ponctuel + mensuel, webhook, reçus PDF, transparence

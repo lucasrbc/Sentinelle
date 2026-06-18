@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Sentinelle — Découvrir et soutenir le patrimoine',
@@ -20,7 +22,19 @@ export default function RootLayout({
 }): React.JSX.Element {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <header className="site-header">
+          <nav aria-label="Navigation principale">
+            <Link href="/" className="brand">
+              Sentinelle
+            </Link>
+            <span className="spacer" />
+            <Link href="/login">Connexion</Link>
+            <Link href="/account">Mon compte</Link>
+          </nav>
+        </header>
+        {children}
+      </body>
     </html>
   );
 }
