@@ -212,11 +212,26 @@ est **vérifiée**.
 - Pages web : `/espace-porteur`, `/espace-porteur/nouveau`, `/espace-porteur/[id]`,
   `/admin/moderation` ; la fiche de lieu affiche les actualités du projet publié.
 
+## Dons (PR n°5)
+
+Don **ponctuel** et **mensuel** via une **couche PSP abstraite** (`PAYMENT_PROVIDER`)
+— `stripe` (Checkout) en prod, `dev` (simulation locale) pour tester sans Stripe.
+
+- `POST /donations/checkout` (public) : refuse tout don sur un projet non publié
+  (« aucun don sans projet/porteur identifié »).
+- `POST /webhooks/stripe` : confirme le paiement (corps brut + signature) →
+  don `SUCCEEDED`, **recalcul de `collectedAmount`** (source de vérité = somme
+  des dons `SUCCEEDED`), **reçu fiscal PDF** généré et stocké.
+- `POST /donations/:id/dev-complete` : simulation de paiement (mode `dev`).
+- `GET /donations/:id/receipt`, `GET /donations/mine`, `GET /transparency/:projectId`.
+- Web : formulaire de don sur la fiche, page `/don/merci`, section transparence
+  « Où va votre argent ».
+
 ## Plan de PR
 
 1. ✅ **Archi & fondations** (monorepo, Prisma + PostGIS, docker-compose)
 2. ✅ **Auth + comptes + rôles** (DONOR / PROJECT_OWNER / ADMIN)
 3. ✅ **Carte + fiches indexables** (MapLibre, SEO)
-4. **Espace porteur** : projets + actualités + devis + modération ← _PR en cours_
-5. Dons Stripe : ponctuel + mensuel, webhook, reçus PDF, transparence
+4. ✅ **Espace porteur** : projets + actualités + devis + modération
+5. **Dons Stripe** : ponctuel + mensuel, webhook, reçus PDF, transparence ← _PR en cours_
 6. Durcissement : RGPD, sécurité, accessibilité, SEO, tests E2E

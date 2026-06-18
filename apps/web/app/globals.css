@@ -266,3 +266,15 @@ input[type="text"] {
 .gauge-percent {
   font-weight: 700;
 }
+
+/* ── Don / transparence ──────────────────────────────────────────────────── */
+.donate-form {
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.transparency {
+  margin-top: 1.5rem;
+}
