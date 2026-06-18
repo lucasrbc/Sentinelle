@@ -161,10 +161,43 @@ node -e "console.log(require('jsonwebtoken').sign({sub:'u1',email:'d@test.fr',au
 curl -H "Authorization: Bearer <jeton>" http://localhost:4000/me
 ```
 
+### Brancher un vrai projet Supabase
+
+Supabase ne gère que **l'identité** (connexion) ; les données du site restent
+dans notre PostgreSQL. Le moteur accepte les jetons Supabase **HS256 (legacy)**
+comme **asymétriques (JWKS, nouveau défaut)**.
+
+1. Créer un projet sur [supabase.com](https://supabase.com) en **région UE**
+   (ex. *Frankfurt / eu-central*) — exigence RGPD.
+2. Dans **Settings → API**, récupérer : *Project URL*, *anon public key*, et
+   (si présent) le *JWT Secret* (section *JWT*).
+3. Activer **Email** dans *Authentication → Providers* (et l'option de
+   confirmation par email selon le besoin).
+4. Renseigner les variables :
+   - racine `.env` (API) : `AUTH_PROVIDER=supabase`, `SUPABASE_URL=...`,
+     `SUPABASE_JWT_SECRET=...` (si fourni), `ADMIN_EMAILS=...`
+   - `apps/web/.env.local` (copier depuis `apps/web/.env.local.example`) :
+     `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+     `NEXT_PUBLIC_API_URL`
+5. Lancer la base et les apps, puis tester sur `http://localhost:3000` :
+   ```bash
+   docker compose up -d && pnpm db:deploy
+   pnpm --filter @sentinelle/api dev   # http://localhost:4000
+   pnpm --filter @sentinelle/web dev   # http://localhost:3000
+   ```
+   S'inscrire sur `/signup`, confirmer l'email, se connecter sur `/login`,
+   puis vérifier `/account` (le rôle vient de l'API via le jeton Supabase).
+
+Vérifier que le projet répond (URL + clé anon, sans secret) :
+```bash
+curl -s "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings" \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" | head -c 200
+```
+
 ## Plan de PR
 
 1. ✅ **Archi & fondations** (monorepo, Prisma + PostGIS, docker-compose)
-2. **Auth + comptes + rôles** (DONOR / PROJECT_OWNER / ADMIN) ← _PR en cours_
+2. ✅ **Auth + comptes + rôles** (DONOR / PROJECT_OWNER / ADMIN)
 3. Carte + fiches indexables (`searchAround` / `searchInBbox`, MapLibre, SEO)
 4. Espace porteur : projets + actualités + devis + modération
 5. Dons Stripe : ponctuel + mensuel, webhook, reçus PDF, transparence
