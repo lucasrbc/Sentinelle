@@ -7,10 +7,13 @@ import {
   IsLatitude,
   IsLongitude,
   IsOptional,
+  IsString,
   Max,
+  MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
-import { HeritageType, ProtectionStatus } from '@sentinelle/db';
+import { HeritageType, ProtectionStatus, UrgencyLevel } from '@sentinelle/db';
 
 /** Transforme `?type=CHURCH,CHAPEL` (ou répété) en tableau. */
 function toArray(value: unknown): unknown {
@@ -38,6 +41,13 @@ export class SiteFiltersDto {
   @IsEnum(ProtectionStatus, { each: true })
   protectionStatus?: ProtectionStatus[];
 
+  // Filtre par niveau d'urgence du projet PUBLISHED rattaché au site.
+  @IsOptional()
+  @Transform(({ value }) => toArray(value))
+  @IsArray()
+  @IsEnum(UrgencyLevel, { each: true })
+  urgency?: UrgencyLevel[];
+
   // Ne renvoyer que les sites portant un projet PUBLISHED avec collecte en cours.
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')
@@ -50,6 +60,14 @@ export class SiteFiltersDto {
   @Min(1)
   @Max(500)
   limit?: number;
+}
+
+/** Recherche texte par nom de lieu / commune (barre de recherche). */
+export class SearchTextDto extends SiteFiltersDto {
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  q!: string;
 }
 
 /** Recherche « autour de moi » : point + rayon (mètres). */
