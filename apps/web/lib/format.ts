@@ -49,3 +49,14 @@ const URGENCY_LABELS: Record<string, string> = {
 export function urgencyLabel(level: string): string {
   return URGENCY_LABELS[level] ?? level;
 }
+
+const PROJECT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Brouillon',
+  PENDING_REVIEW: 'En cours de validation',
+  PUBLISHED: 'Publié',
+  ARCHIVED: 'Archivé',
+};
+
+export function projectStatusLabel(status: string): string {
+  return PROJECT_STATUS_LABELS[status] ?? status;
+}

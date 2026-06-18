@@ -194,11 +194,29 @@ curl -s "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings" \
   -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" | head -c 200
 ```
 
+## Espace porteur & modération (PR n°4)
+
+Un porteur (`PROJECT_OWNER`) gère les projets de **son organisation** ; un
+projet n'est public qu'après **validation admin**, et seulement si l'organisation
+est **vérifiée**.
+
+- **Projets** : `POST /projects`, `PATCH /projects/:id`, `POST /projects/:id/submit`
+  (→ `PENDING_REVIEW`), `GET /projects/mine`, `GET /projects/:id`.
+- **Devis** : `POST /projects/:id/quote` (PDF) via une **couche stockage**
+  abstraite — `local` (disque, dev) ou `s3` (object storage UE), selon
+  `STORAGE_PROVIDER`.
+- **Actualités de chantier** : `POST /projects/:id/updates`, `GET /projects/:id/updates`
+  (public si le projet est publié).
+- **Modération (admin)** : `GET /projects/moderation`, `POST /projects/:id/publish`
+  (exige une organisation vérifiée), `POST /projects/:id/reject`.
+- Pages web : `/espace-porteur`, `/espace-porteur/nouveau`, `/espace-porteur/[id]`,
+  `/admin/moderation` ; la fiche de lieu affiche les actualités du projet publié.
+
 ## Plan de PR
 
 1. ✅ **Archi & fondations** (monorepo, Prisma + PostGIS, docker-compose)
 2. ✅ **Auth + comptes + rôles** (DONOR / PROJECT_OWNER / ADMIN)
-3. Carte + fiches indexables (`searchAround` / `searchInBbox`, MapLibre, SEO)
-4. Espace porteur : projets + actualités + devis + modération
+3. ✅ **Carte + fiches indexables** (MapLibre, SEO)
+4. **Espace porteur** : projets + actualités + devis + modération ← _PR en cours_
 5. Dons Stripe : ponctuel + mensuel, webhook, reçus PDF, transparence
 6. Durcissement : RGPD, sécurité, accessibilité, SEO, tests E2E

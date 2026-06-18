@@ -5,16 +5,21 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 
 describe('AuthService.findOrCreateUser', () => {
-  let upsert: jest.Mock;
+  let findUnique: jest.Mock;
+  let create: jest.Mock;
   let update: jest.Mock;
 
   async function buildService(adminEmails = ''): Promise<AuthService> {
-    upsert = jest.fn();
+    findUnique = jest.fn();
+    create = jest.fn();
     update = jest.fn();
     const moduleRef = await Test.createTestingModule({
       providers: [
         AuthService,
-        { provide: PrismaService, useValue: { user: { upsert, update } } },
+        {
+          provide: PrismaService,
+          useValue: { user: { findUnique, create, update } },
+        },
         { provide: ConfigService, useValue: { get: () => adminEmails } },
       ],
     }).compile();
@@ -23,14 +28,14 @@ describe('AuthService.findOrCreateUser', () => {
 
   it('crée un compte DONOR par défaut à la première connexion', async () => {
     const service = await buildService();
-    upsert.mockResolvedValue({ id: 'u1', role: UserRole.DONOR });
+    findUnique.mockResolvedValue(null); // ni par providerId, ni par email
+    create.mockResolvedValue({ id: 'u1', role: UserRole.DONOR });
 
     await service.findOrCreateUser({ providerId: 'sub-1', email: 'a@b.fr' });
 
-    expect(upsert).toHaveBeenCalledWith(
+    expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { authProviderId: 'sub-1' },
-        create: expect.objectContaining({
+        data: expect.objectContaining({
           authProviderId: 'sub-1',
           email: 'a@b.fr',
           role: UserRole.DONOR,
@@ -41,23 +46,41 @@ describe('AuthService.findOrCreateUser', () => {
 
   it('crée directement un ADMIN si l’email est dans ADMIN_EMAILS', async () => {
     const service = await buildService('boss@sentinelle.fr');
-    upsert.mockResolvedValue({ id: 'u2', role: UserRole.ADMIN });
+    findUnique.mockResolvedValue(null);
+    create.mockResolvedValue({ id: 'u2', role: UserRole.ADMIN });
 
     await service.findOrCreateUser({
       providerId: 'sub-2',
       email: 'BOSS@sentinelle.fr', // casse différente → doit matcher
     });
 
-    expect(upsert).toHaveBeenCalledWith(
+    expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({ role: UserRole.ADMIN }),
+        data: expect.objectContaining({ role: UserRole.ADMIN }),
       }),
     );
   });
 
+  it('rattache un compte existant portant le même email (sans doublon)', async () => {
+    const service = await buildService();
+    // 1er appel (par providerId) → null ; 2e appel (par email) → compte existant
+    findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'u9', role: UserRole.DONOR });
+    update.mockResolvedValue({ id: 'u9', role: UserRole.DONOR });
+
+    await service.findOrCreateUser({ providerId: 'sub-new', email: 'a@b.fr' });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'u9' },
+      data: { authProviderId: 'sub-new' },
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('promeut en ADMIN un compte existant listé mais encore DONOR', async () => {
     const service = await buildService('boss@sentinelle.fr');
-    upsert.mockResolvedValue({ id: 'u3', role: UserRole.DONOR });
+    findUnique.mockResolvedValue({ id: 'u3', role: UserRole.DONOR });
     update.mockResolvedValue({ id: 'u3', role: UserRole.ADMIN });
 
     const result = await service.findOrCreateUser({

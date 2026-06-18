@@ -28,17 +28,35 @@ export class AuthService {
     const email = identity.email?.toLowerCase() ?? null;
     const shouldBeAdmin = email ? this.adminEmails.includes(email) : false;
 
-    const user = await this.prisma.user.upsert({
+    // 1) Compte déjà lié à cet identifiant de fournisseur.
+    let user = await this.prisma.user.findUnique({
       where: { authProviderId: identity.providerId },
-      create: {
-        authProviderId: identity.providerId,
-        // L'email est requis et unique ; on conserve une valeur stable si le
-        // fournisseur n'en transmet pas (cas limite, ex. connexion par téléphone).
-        email: email ?? `${identity.providerId}@no-email.sentinelle.local`,
-        role: shouldBeAdmin ? UserRole.ADMIN : UserRole.DONOR,
-      },
-      update: {},
     });
+
+    // 2) Sinon, rattacher un compte existant portant le même email (email
+    //    vérifié côté fournisseur), pour éviter un conflit d'unicité.
+    if (!user && email) {
+      const byEmail = await this.prisma.user.findUnique({ where: { email } });
+      if (byEmail) {
+        user = await this.prisma.user.update({
+          where: { id: byEmail.id },
+          data: { authProviderId: identity.providerId },
+        });
+      }
+    }
+
+    // 3) Sinon, créer le compte (DONOR par défaut).
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          authProviderId: identity.providerId,
+          // L'email est requis et unique ; valeur stable si le fournisseur n'en
+          // transmet pas (cas limite, ex. connexion par téléphone).
+          email: email ?? `${identity.providerId}@no-email.sentinelle.local`,
+          role: shouldBeAdmin ? UserRole.ADMIN : UserRole.DONOR,
+        },
+      });
+    }
 
     // Promotion idempotente : un email d'admin déjà inscrit en DONOR est élevé.
     if (shouldBeAdmin && user.role !== UserRole.ADMIN) {

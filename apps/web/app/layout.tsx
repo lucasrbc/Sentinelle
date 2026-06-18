@@ -28,6 +28,8 @@ export default function RootLayout({
             <Link href="/" className="brand">
               Sentinelle
             </Link>
+            <Link href="/carte">Carte</Link>
+            <Link href="/espace-porteur">Espace porteur</Link>
             <span className="spacer" />
             <Link href="/login">Connexion</Link>
             <Link href="/account">Mon compte</Link>
