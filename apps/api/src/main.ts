@@ -7,7 +7,10 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody : nécessaire pour vérifier la signature des webhooks Stripe.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
 
   // Validation globale des DTO (class-validator) — rejette tout champ inattendu.
   app.useGlobalPipes(

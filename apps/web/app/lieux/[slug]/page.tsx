@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { DonateForm } from '@/components/DonateForm';
 import { Gauge } from '@/components/Gauge';
 import { apiGet } from '@/lib/api';
 import {
@@ -62,12 +63,19 @@ export default async function SitePage({
     notFound();
   }
 
-  // Actualités de chantier (uniquement si un projet publié existe).
+  // Actualités de chantier + transparence (uniquement si un projet publié existe).
   let updates: ProjectUpdate[] = [];
+  let transparency: {
+    donationsCount: number;
+    monthlyCount: number;
+  } | null = null;
   if (site.project) {
     updates = await apiGet<ProjectUpdate[]>(
       `/projects/${site.project.id}/updates`,
     ).catch(() => []);
+    transparency = await apiGet<{ donationsCount: number; monthlyCount: number }>(
+      `/transparency/${site.project.id}`,
+    ).catch(() => null);
   }
 
   // Données structurées schema.org (référencement).
@@ -146,6 +154,23 @@ export default async function SitePage({
             La plateforme finance et documente la restauration ; elle n'autorise
             aucun travaux (les monuments classés relèvent de la DRAC / ABF).
           </p>
+
+          <DonateForm projectId={site.project.id} />
+
+          <section className="transparency" aria-label="Transparence">
+            <h3>Où va votre argent</h3>
+            <p className="muted">
+              Chaque euro est tracé et destiné à ce projet de restauration. Les
+              fonds appartiennent au projet, pas à la plateforme. Un reçu fiscal
+              est émis pour chaque don.
+            </p>
+            {transparency ? (
+              <p>
+                <strong>{transparency.donationsCount}</strong> don(s) reçus, dont{' '}
+                <strong>{transparency.monthlyCount}</strong> mensuel(s).
+              </p>
+            ) : null}
+          </section>
         </section>
       ) : (
         <p className="muted">
