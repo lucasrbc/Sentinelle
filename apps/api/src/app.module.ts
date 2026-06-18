@@ -5,7 +5,9 @@ import { AuthModule } from './auth/auth.module';
 import { HealthController } from './health/health.controller';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProjectsModule } from './projects/projects.module';
 import { SitesModule } from './sites/sites.module';
+import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -13,10 +15,12 @@ import { UsersModule } from './users/users.module';
     // Charge le .env local de l'app puis, à défaut, celui à la racine du monorepo.
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../../.env'] }),
     PrismaModule,
+    StorageModule,
     AuthModule,
     UsersModule,
     OrganizationsModule,
     SitesModule,
+    ProjectsModule,
   ],
   controllers: [AppController, HealthController],
 })

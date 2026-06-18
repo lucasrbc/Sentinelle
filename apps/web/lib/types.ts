@@ -40,6 +40,30 @@ export interface SiteDetail {
   project: SiteProject | null;
 }
 
+/** Projet vu par son porteur / l'admin (tous statuts). */
+export interface OwnerProject {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  description: string | null;
+  status: 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'ARCHIVED';
+  urgencyLevel: string | null;
+  targetAmount: number;
+  collectedAmount: number;
+  quoteUrl: string | null;
+  heritageSiteId: string;
+  organizationId: string;
+}
+
+export interface ProjectUpdate {
+  id: string;
+  title: string;
+  body: string;
+  imageUrls: string[];
+  createdAt: string;
+}
+
 /** Filtres de la carte / recherche. */
 export interface SiteFilters {
   type: string[];

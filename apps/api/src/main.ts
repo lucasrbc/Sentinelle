@@ -1,10 +1,13 @@
 import 'reflect-metadata';
+import { resolve } from 'node:path';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Validation globale des DTO (class-validator) — rejette tout champ inattendu.
   app.useGlobalPipes(
@@ -15,6 +18,11 @@ async function bootstrap(): Promise<void> {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+
+  // Sert les fichiers stockés localement (devis) sous /uploads (mode dev).
+  const config = app.get(ConfigService);
+  const uploadsDir = resolve(config.get<string>('UPLOADS_DIR') ?? 'uploads');
+  app.useStaticAssets(uploadsDir, { prefix: '/uploads/' });
 
   // CORS restreint aux origines déclarées (WEB_ORIGIN).
   const origins = (process.env.WEB_ORIGIN ?? 'http://localhost:3000')

@@ -8,7 +8,7 @@ import {
   protectionLabel,
   urgencyLabel,
 } from '@/lib/format';
-import type { SiteDetail } from '@/lib/types';
+import type { ProjectUpdate, SiteDetail } from '@/lib/types';
 
 // Rendu côté serveur : pages indexables (SEO).
 export const dynamic = 'force-dynamic';
@@ -60,6 +60,14 @@ export default async function SitePage({
   const site = await fetchSite(slug);
   if (!site) {
     notFound();
+  }
+
+  // Actualités de chantier (uniquement si un projet publié existe).
+  let updates: ProjectUpdate[] = [];
+  if (site.project) {
+    updates = await apiGet<ProjectUpdate[]>(
+      `/projects/${site.project.id}/updates`,
+    ).catch(() => []);
   }
 
   // Données structurées schema.org (référencement).
@@ -144,6 +152,18 @@ export default async function SitePage({
           Aucun projet de restauration n'est encore ouvert pour ce lieu.
         </p>
       )}
+
+      {updates.length ? (
+        <section aria-label="Actualités de chantier" style={{ marginTop: '2rem' }}>
+          <h2>Actualités de chantier</h2>
+          {updates.map((u) => (
+            <article key={u.id} style={{ marginBottom: '1rem' }}>
+              <h3 style={{ marginBottom: 4 }}>{u.title}</h3>
+              <p style={{ margin: 0 }}>{u.body}</p>
+            </article>
+          ))}
+        </section>
+      ) : null}
     </main>
   );
 }
