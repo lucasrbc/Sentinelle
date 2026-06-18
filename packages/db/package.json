@@ -2,21 +2,22 @@
   "name": "@sentinelle/db",
   "version": "0.1.0",
   "private": true,
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./index.js",
+  "types": "./index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./index.d.ts",
+      "default": "./index.js"
     }
   },
+  "files": ["index.js", "index.d.ts", "client", "prisma"],
   "scripts": {
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "deploy": "prisma migrate deploy",
     "seed": "tsx scripts/seed-osm.ts",
     "studio": "prisma studio",
-    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "build": "prisma generate",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "tsc -p tsconfig.json"
   },

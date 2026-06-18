@@ -227,6 +227,12 @@ Don **ponctuel** et **mensuel** via une **couche PSP abstraite** (`PAYMENT_PROVI
 - Web : formulaire de don sur la fiche, page `/don/merci`, section transparence
   « Où va votre argent ».
 
+## Mise en ligne
+
+Voir **[DEPLOY.md](./DEPLOY.md)** : déploiement Docker sur un serveur UE
+(PostGIS + Redis + migrations + API + Web + reverse proxy **Caddy** avec HTTPS
+automatique). Configuration via `.env.production.example`.
+
 ## Plan de PR
 
 1. ✅ **Archi & fondations** (monorepo, Prisma + PostGIS, docker-compose)
